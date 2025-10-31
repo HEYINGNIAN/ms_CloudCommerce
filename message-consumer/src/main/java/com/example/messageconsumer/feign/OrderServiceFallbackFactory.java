@@ -1,7 +1,7 @@
 package com.example.messageconsumer.feign;
 
 import com.example.common.entity.Result;
-import feign.hystrix.FallbackFactory;
+import org.springframework.cloud.openfeign.FallbackFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

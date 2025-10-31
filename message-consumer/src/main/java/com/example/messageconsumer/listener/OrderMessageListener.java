@@ -3,13 +3,15 @@ package com.example.messageconsumer.listener;
 import com.example.messageconsumer.feign.OrderServiceClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.redisson.api.RedissonClient;
 import org.springframework.amqp.core.Message;
+import com.rabbitmq.client.Channel;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +29,7 @@ public class OrderMessageListener {
     private RabbitTemplate rabbitTemplate;
 
     @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private RedissonClient redissonClient;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -41,7 +43,7 @@ public class OrderMessageListener {
      * 监听订单创建消息
      */
     @RabbitListener(queues = "order.create.queue", ackMode = "MANUAL")
-    public void handleOrderCreate(Message message, org.springframework.amqp.core.Channel channel) throws Exception {
+    public void handleOrderCreate(Message message, Channel channel) throws Exception {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> orderData = objectMapper.readValue(msg, Map.class);
@@ -52,8 +54,7 @@ public class OrderMessageListener {
             // 1. 记录订单创建日志（实际项目中可以写入数据库或日志系统）
             // 2. 启动订单超时检查（这里使用Redis过期键实现）
             String orderTimeoutKey = "order:timeout:" + orderId;
-            redisTemplate.opsForValue().set(orderTimeoutKey, orderId, 30, TimeUnit.MINUTES);
-            redisTemplate.expire(orderTimeoutKey, 30, TimeUnit.MINUTES);
+            redissonClient.getBucket(orderTimeoutKey).set(orderId, 30, TimeUnit.MINUTES);
 
             // 3. 发送订单创建成功的通知（如邮件、短信等，实际项目中实现）
             // TODO: 实现通知逻辑
@@ -72,7 +73,7 @@ public class OrderMessageListener {
      * 监听订单支付消息
      */
     @RabbitListener(queues = "order.pay.queue", ackMode = "MANUAL")
-    public void handleOrderPay(Message message, org.springframework.amqp.core.Channel channel) throws Exception {
+    public void handleOrderPay(Message message, Channel channel) throws Exception {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> orderData = objectMapper.readValue(msg, Map.class);
@@ -82,10 +83,10 @@ public class OrderMessageListener {
 
             // 1. 更新订单状态为已支付
             com.example.common.entity.Result<Boolean> result = orderServiceClient.updateOrderStatus(orderId, ORDER_STATUS_PAID);
-            if (result.isSuccess()) {
+            if (result.getCode() == 200) {
                 // 2. 取消订单超时检查
                 String orderTimeoutKey = "order:timeout:" + orderId;
-                redisTemplate.delete(orderTimeoutKey);
+                redissonClient.getBucket(orderTimeoutKey).delete();
 
                 // 3. 发送订单支付成功的通知
                 // TODO: 实现通知逻辑
@@ -108,7 +109,7 @@ public class OrderMessageListener {
      * 监听订单超时消息
      */
     @RabbitListener(queues = "order.timeout.queue", ackMode = "MANUAL")
-    public void handleOrderTimeout(Message message, org.springframework.amqp.core.Channel channel) throws Exception {
+    public void handleOrderTimeout(Message message, Channel channel) throws Exception {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> orderData = objectMapper.readValue(msg, Map.class);
@@ -117,7 +118,7 @@ public class OrderMessageListener {
 
             // 1. 更新订单状态为已取消
             com.example.common.entity.Result<Boolean> result = orderServiceClient.updateOrderStatus(orderId, ORDER_STATUS_CANCELLED);
-            if (result.isSuccess()) {
+            if (result.getCode() == 200) {
                 // 2. 发送库存回滚消息
                 Map<String, Object> stockRollbackData = Map.of(
                         "orderId", orderId,
@@ -146,7 +147,7 @@ public class OrderMessageListener {
      * 监听库存扣减失败消息
      */
     @RabbitListener(queues = "stock.deduct.fail.queue", ackMode = "MANUAL")
-    public void handleStockDeductFail(Message message, org.springframework.amqp.core.Channel channel) throws Exception {
+    public void handleStockDeductFail(Message message, Channel channel) throws Exception {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> stockData = objectMapper.readValue(msg, Map.class);

@@ -9,7 +9,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 /**
  * 消息消费者启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.messageconsumer", "com.example.common"}, exclude = {org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration.class, org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration.class})
 @EnableDiscoveryClient
 @EnableFeignClients
 @RefreshScope

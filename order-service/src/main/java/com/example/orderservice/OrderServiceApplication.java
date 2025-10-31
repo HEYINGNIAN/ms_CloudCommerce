@@ -9,7 +9,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 /**
  * 订单服务启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.orderservice", "com.example.common"})
 @EnableDiscoveryClient
 @EnableFeignClients
 @RefreshScope

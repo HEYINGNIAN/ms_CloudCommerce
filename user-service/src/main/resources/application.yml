@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: user-service
+  config:
+    import: nacos:user-service
   cloud:
     nacos:
       discovery:
@@ -17,13 +19,15 @@ spring:
         file-extension: yml
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/distributed_system?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/learn?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: root
-  redis:
-    host: localhost
-    port: 6379
-    database: 0
+    password: 990324
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
 
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml

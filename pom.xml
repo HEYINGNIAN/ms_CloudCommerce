@@ -51,6 +51,7 @@
         <module>order-service</module>
         <module>product-service</module>
         <module>common</module>
+        <module>message-consumer</module>
     </modules>
 
     <build>

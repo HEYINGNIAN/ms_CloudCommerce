@@ -3,16 +3,20 @@ package com.example.productservice.service;
 import com.example.productservice.entity.Product;
 import com.example.productservice.dto.ProductDTO;
 import com.example.common.enumz.ErrorCode;
-import com.example.common.util.RedisLockUtil;
+import com.example.common.util.RedissonLockUtil;
 import com.example.common.entity.Result;
 import com.example.productservice.repository.ProductRepository;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.Resource;
 import org.springframework.beans.BeanUtils;
+import org.redisson.api.RedissonClient;
+import org.redisson.api.RLock;
+import org.redisson.api.RBucket;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Resource;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
@@ -28,8 +32,11 @@ public class ProductService {
     private ProductRepository productRepository;
 
     @Resource
-    private RedisLockUtil redisLockUtil;
+    private RedissonLockUtil redisLockUtil;
 
+    @Resource
+    private RedissonClient redissonClient;
+    
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -96,7 +103,7 @@ public class ProductService {
         if (success) {
             // 清除缓存
             String cacheKey = PRODUCT_CACHE_PREFIX + product.getId();
-            redisTemplate.delete(cacheKey);
+            redissonClient.getBucket(cacheKey).delete();
             
             ProductDTO productDTO = new ProductDTO();
             BeanUtils.copyProperties(product, productDTO);
@@ -113,7 +120,7 @@ public class ProductService {
         if (success) {
             // 清除缓存
             String cacheKey = PRODUCT_CACHE_PREFIX + id;
-            redisTemplate.delete(cacheKey);
+            redissonClient.getBucket(cacheKey).delete();
         }
         return success ? Result.success(true) : Result.fail("删除产品失败");
     }
@@ -125,18 +132,19 @@ public class ProductService {
     public Result<Boolean> deductStock(Long productId, Integer quantity) {
         // 生成锁的key
         String lockKey = "deduct_stock:" + productId;
-        String lockValue = null;
+        RLock lock = null;
         try {
             // 尝试获取分布式锁
-            lockValue = redisLockUtil.tryLock(lockKey, 10, 3);
-            if (lockValue == null) {
+            lock = redisLockUtil.tryLock(lockKey, 10, 3);
+            if (lock == null) {
                 log.warn("获取分布式锁失败: {}", lockKey);
                 return Result.fail(ErrorCode.LOCK_FAIL.getCode(), "获取分布式锁失败");
             }
 
             // 先检查Redis中的库存
             String stockKey = STOCK_CACHE_PREFIX + productId;
-            Integer cachedStock = (Integer) redisTemplate.opsForValue().get(stockKey);
+            RBucket<Integer> stockBucket = redissonClient.getBucket(stockKey);
+            Integer cachedStock = stockBucket.get();
             if (cachedStock != null && cachedStock < quantity) {
                 return Result.fail("库存不足");
             }
@@ -157,22 +165,16 @@ public class ProductService {
             boolean success = productRepository.updateById(product) > 0;
             if (success) {
                 // 更新缓存
-                redisTemplate.opsForValue().set(stockKey, product.getStock());
+                redissonClient.getBucket(stockKey).set(product.getStock());
                 // 清除产品缓存，下次查询会重新加载最新数据
                 String productCacheKey = PRODUCT_CACHE_PREFIX + productId;
-                redisTemplate.delete(productCacheKey);
+                redissonClient.getBucket(productCacheKey).delete();
                 return Result.success(true);
             }
             return Result.fail("扣减库存失败");
-        } catch (InterruptedException e) {
-            log.error("获取分布式锁被中断", e);
-            Thread.currentThread().interrupt();
-            return Result.fail("操作被中断");
         } finally {
             // 释放锁
-            if (lockValue != null) {
-                redisLockUtil.unlock(lockKey, lockValue);
-            }
+            redisLockUtil.unlock(lock);
         }
     }
 
@@ -191,10 +193,10 @@ public class ProductService {
         if (success) {
             // 更新缓存
             String stockKey = STOCK_CACHE_PREFIX + productId;
-            redisTemplate.opsForValue().set(stockKey, product.getStock());
+            redissonClient.getBucket(stockKey).set(product.getStock());
             // 清除产品缓存
             String productCacheKey = PRODUCT_CACHE_PREFIX + productId;
-            redisTemplate.delete(productCacheKey);
+            redissonClient.getBucket(productCacheKey).delete();
         }
         return success ? Result.success(true) : Result.fail("增加库存失败");
     }

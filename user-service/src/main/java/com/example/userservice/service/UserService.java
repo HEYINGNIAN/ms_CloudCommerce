@@ -3,15 +3,16 @@ package com.example.userservice.service;
 import com.example.userservice.entity.User;
 import com.example.userservice.dto.UserDTO;
 import com.example.common.enumz.ErrorCode;
-import com.example.common.util.RedisLockUtil;
+import com.example.common.util.RedissonLockUtil;
 import com.example.common.entity.Result;
 import com.example.userservice.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,7 +27,7 @@ public class UserService {
     private UserRepository userRepository;
 
     @Resource
-    private RedisLockUtil redisLockUtil;
+    private RedissonLockUtil redisLockUtil;
 
     /**
      * 根据ID获取用户
@@ -95,11 +96,11 @@ public class UserService {
     public Result<Boolean> deductBalance(Long userId, Integer amount) {
         // 生成锁的key
         String lockKey = "deduct_balance:" + userId;
-        String lockValue = null;
+        RLock lock = null;
         try {
             // 尝试获取分布式锁，最多等待3秒
-            lockValue = redisLockUtil.tryLock(lockKey, 10, 3);
-            if (lockValue == null) {
+            lock = redisLockUtil.tryLock(lockKey, 10, 3);
+            if (lock == null) {
                 log.warn("获取分布式锁失败: {}", lockKey);
                 return Result.fail(ErrorCode.LOCK_FAIL.getCode(), "获取分布式锁失败");
             }
@@ -119,15 +120,9 @@ public class UserService {
             user.setBalance(user.getBalance() - amount);
             boolean success = userRepository.updateById(user) > 0;
             return success ? Result.success(true) : Result.fail("扣减余额失败");
-        } catch (InterruptedException e) {
-            log.error("获取分布式锁被中断", e);
-            Thread.currentThread().interrupt();
-            return Result.fail("操作被中断");
         } finally {
             // 释放锁
-            if (lockValue != null) {
-                redisLockUtil.unlock(lockKey, lockValue);
-            }
+            redisLockUtil.unlock(lock);
         }
     }
 }

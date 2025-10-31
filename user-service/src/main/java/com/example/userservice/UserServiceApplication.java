@@ -8,7 +8,7 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 /**
  * 用户服务启动类
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.example.userservice", "com.example.common"})
 @EnableDiscoveryClient
 @RefreshScope
 public class UserServiceApplication {

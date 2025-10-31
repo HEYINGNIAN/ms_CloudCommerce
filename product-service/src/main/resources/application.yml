@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: product-service
+  config:
+    import: nacos:product-service
   cloud:
     nacos:
       discovery:
@@ -17,17 +19,19 @@ spring:
         file-extension: yml
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/distributed_system?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/learn?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: root
-  redis:
-    host: localhost
-    port: 6379
-    database: 0
+    password: 990324
+
   elasticsearch:
     uris: http://localhost:9200
     username: elastic
     password: elastic
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
 
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
