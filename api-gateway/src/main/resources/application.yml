@@ -2,8 +2,12 @@ server:
   port: 8080
 
 spring:
+  main:
+    web-application-type: reactive
   application:
     name: api-gateway
+  config:
+    import: nacos:api-gateway
   cloud:
     nacos:
       discovery:
@@ -28,16 +32,6 @@ spring:
             - Path=/api/users/**
           filters:
             - StripPrefix=1
-            - name: CircuitBreaker
-              args:
-                name: userServiceCircuitBreaker
-                fallbackUri: forward:/fallback/user
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: '#{@userKeyResolver}'
 
         # 产品服务路由
         - id: product-service
@@ -46,16 +40,6 @@ spring:
             - Path=/api/products/**
           filters:
             - StripPrefix=1
-            - name: CircuitBreaker
-              args:
-                name: productServiceCircuitBreaker
-                fallbackUri: forward:/fallback/product
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 20
-                redis-rate-limiter.burstCapacity: 40
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: '#{@userKeyResolver}'
 
         # 订单服务路由
         - id: order-service
@@ -64,32 +48,16 @@ spring:
             - Path=/api/orders/**
           filters:
             - StripPrefix=1
-            - name: CircuitBreaker
-              args:
-                name: orderServiceCircuitBreaker
-                fallbackUri: forward:/fallback/order
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 15
-                redis-rate-limiter.burstCapacity: 30
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: '#{@userKeyResolver}'
 
       # 全局过滤器
       default-filters:
-        - AddResponseHeader=X-Response-Time, #{T(System).currentTimeMillis()}
-        - name: Logging
-          args:
-            preLoggerName: gateway.pre.log
-            postLoggerName: gateway.post.log
-            loggerLevel: INFO
 
   # Redis配置
-  redis:
-    host: localhost
-    port: 6379
-    password: 
-    database: 0
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
 
 # 断路器配置
 resilience4j:
