@@ -16,8 +16,8 @@ import java.math.BigDecimal;
 public class OrderItem extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
-    private Long orderId;
-    private Long productId;
+    private String orderId;
+    private String productId;
     private String productName;
     private Integer quantity;
     private BigDecimal unitPrice;

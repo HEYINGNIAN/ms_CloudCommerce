@@ -8,9 +8,9 @@ import java.math.BigDecimal;
  */
 @Data
 public class OrderItemDTO {
-    private Long id;
-    private Long orderId;
-    private Long productId;
+    private String id;
+    private String orderId;
+    private String productId;
     private String productName;
     private Integer quantity;
     private BigDecimal unitPrice;

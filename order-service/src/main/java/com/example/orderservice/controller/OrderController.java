@@ -15,7 +15,7 @@ import java.util.List;
  * 订单控制器
  */
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/orders")
 @Slf4j
 public class OrderController {
 
@@ -27,18 +27,30 @@ public class OrderController {
      */
     @PostMapping
     @CircuitBreaker(name = "orderService", fallbackMethod = "createOrderFallback")
-    public Result<OrderDTO> createOrder(@RequestParam Long userId, @RequestParam Long productId, @RequestParam Integer quantity) {
+    public Result<OrderDTO> createOrder(@RequestParam(value = "userId") String userId, 
+                                       @RequestParam(value = "productId") String productId, 
+                                       @RequestParam Integer quantity) {
         log.info("创建订单: userId={}, productId={}, quantity={}", userId, productId, quantity);
         return orderService.createOrder(userId, productId, quantity);
     }
 
+    /**
+     * 获取所有订单列表
+     */
+    @GetMapping
+    @CircuitBreaker(name = "orderService", fallbackMethod = "getAllOrdersFallback")
+    public Result<List<OrderDTO>> getAllOrders() {
+        log.info("获取所有订单列表");
+        return orderService.getAllOrders();
+    }
+    
     /**
      * 获取订单详情
      */
     @GetMapping("/{id}")
     @CircuitBreaker(name = "orderService", fallbackMethod = "getOrderByIdFallback")
     @RateLimiter(name = "orderService", fallbackMethod = "rateLimiterFallback")
-    public Result<OrderDTO> getOrderById(@PathVariable Long id) {
+    public Result<OrderDTO> getOrderById(@PathVariable String id) {
         log.info("获取订单详情: {}", id);
         return orderService.getOrderById(id);
     }
@@ -48,7 +60,7 @@ public class OrderController {
      */
     @GetMapping("/user/{userId}")
     @CircuitBreaker(name = "orderService", fallbackMethod = "getUserOrdersFallback")
-    public Result<List<OrderDTO>> getUserOrders(@PathVariable Long userId) {
+    public Result<List<OrderDTO>> getUserOrders(@PathVariable String userId) {
         log.info("获取用户订单列表: userId={}", userId);
         return orderService.getUserOrders(userId);
     }
@@ -58,28 +70,33 @@ public class OrderController {
      */
     @PutMapping("/status")
     @CircuitBreaker(name = "orderService", fallbackMethod = "updateOrderStatusFallback")
-    public Result<Boolean> updateOrderStatus(@RequestParam Long orderId, @RequestParam Integer status) {
+    public Result<Boolean> updateOrderStatus(@RequestParam String orderId, @RequestParam Integer status) {
         log.info("更新订单状态: orderId={}, status={}", orderId, status);
         return orderService.updateOrderStatus(orderId, status);
     }
 
     // 熔断降级方法
-    public Result<OrderDTO> createOrderFallback(Long userId, Long productId, Integer quantity, Throwable t) {
+    public Result<OrderDTO> createOrderFallback(String userId, String productId, Integer quantity, Throwable t) {
         log.error("创建订单熔断: userId={}, productId={}, quantity={}", userId, productId, quantity, t);
         return Result.fail("服务暂时不可用，请稍后重试");
     }
 
-    public Result<OrderDTO> getOrderByIdFallback(Long id, Throwable t) {
+    public Result<OrderDTO> getOrderByIdFallback(String id, Throwable t) {
         log.error("获取订单详情熔断: {}", id, t);
         return Result.fail("服务暂时不可用，请稍后重试");
     }
 
-    public Result<List<OrderDTO>> getUserOrdersFallback(Long userId, Throwable t) {
+    public Result<List<OrderDTO>> getUserOrdersFallback(String userId, Throwable t) {
         log.error("获取用户订单列表熔断: userId={}", userId, t);
         return Result.fail("服务暂时不可用，请稍后重试");
     }
+    
+    public Result<List<OrderDTO>> getAllOrdersFallback(Throwable t) {
+        log.error("获取所有订单列表熔断", t);
+        return Result.fail("服务暂时不可用，请稍后重试");
+    }
 
-    public Result<Boolean> updateOrderStatusFallback(Long orderId, Integer status, Throwable t) {
+    public Result<Boolean> updateOrderStatusFallback(String orderId, Integer status, Throwable t) {
         log.error("更新订单状态熔断: orderId={}, status={}", orderId, status, t);
         return Result.fail("服务暂时不可用，请稍后重试");
     }

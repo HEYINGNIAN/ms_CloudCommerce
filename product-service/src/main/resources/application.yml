@@ -50,3 +50,24 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Seata配置
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: my_test_tx_group
+  service:
+    vgroup-mapping:
+      my_test_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+    enable-degrade: false
+    disable-global-transaction: false
+  config:
+    type: file
+    file:
+      name: file.conf
+  registry:
+    type: file
+    file:
+      name: file.conf

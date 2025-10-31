@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Select, Input, Typography, message } from 'antd';
-import axios from 'axios';
+import api from '../utils/axiosConfig';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -19,7 +19,8 @@ const Orders = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/orders');
+      // 使用全局axios配置，自动处理大整数ID为字符串
+      const response = await api.get('/orders');
       if (response.data.code === 200) {
         setOrders(response.data.data);
       } else {
@@ -36,8 +37,10 @@ const Orders = () => {
   // 获取产品列表
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('/api/products');
+      // 使用全局axios配置，自动处理大整数ID为字符串
+      const response = await api.get('/products');
       if (response.data.code === 200) {
+        // JSONBig已经在axios配置中处理了大整数精度问题
         setProducts(response.data.data);
       }
     } catch (error) {
@@ -48,8 +51,10 @@ const Orders = () => {
   // 获取用户列表
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users');
+      // 使用全局axios配置，自动处理大整数ID为字符串
+      const response = await api.get('/users');
       if (response.data.code === 200) {
+        // JSONBig已经在axios配置中处理了大整数精度问题
         setUsers(response.data.data);
       }
     } catch (error) {
@@ -80,12 +85,16 @@ const Orders = () => {
   // 创建订单
   const handleCreateOrder = async (values) => {
     try {
-      const response = await axios.post('/api/orders', null, {
-        params: {
-          userId: values.userId,
-          productId: values.productId,
-          quantity: values.quantity
-        }
+      // 注意：ID作为字符串处理以避免JavaScript长整数精度丢失问题
+      // 数量仍转换为数字类型
+      const orderData = {
+        userId: values.userId, // 保持字符串类型
+        productId: values.productId, // 保持字符串类型
+        quantity: Number(values.quantity)
+      };
+      
+      const response = await api.post('/orders', null, {
+        params: orderData
       });
       
       if (response.data.code === 200) {
@@ -104,7 +113,8 @@ const Orders = () => {
   // 查看订单详情
   const handleViewDetail = async (id) => {
     try {
-      const response = await axios.get(`/api/orders/${id}`);
+      // 确保传递的是字符串类型的订单ID
+      const response = await api.get(`/orders/${String(id)}`);
       if (response.data.code === 200) {
         setSelectedOrder(response.data.data);
         setDetailVisible(true);
@@ -119,6 +129,8 @@ const Orders = () => {
 
   // 支付订单
   const handlePayOrder = async (orderId) => {
+    // 确保orderId是字符串类型
+    const stringOrderId = String(orderId);
     Modal.confirm({
       title: '确认支付',
       content: '确定要支付这个订单吗？',
@@ -131,8 +143,8 @@ const Orders = () => {
           message.success('支付成功');
           // 发送订单支付消息
           const transactionId = 'TXN' + Date.now();
-          await axios.post('/api/orders/pay', null, {
-            params: { orderId, transactionId }
+          await api.post('/orders/pay', null, {
+            params: { orderId: stringOrderId, transactionId }
           });
           fetchOrders();
         } catch (error) {
@@ -166,14 +178,16 @@ const Orders = () => {
       title: '订单ID',
       dataIndex: 'id',
       key: 'id',
+      // 确保订单ID作为字符串显示
+      render: id => String(id)
     },
-    {
-      title: '用户ID',
+    {      title: '用户ID',
       dataIndex: 'userId',
       key: 'userId',
       render: userId => {
-        const user = users.find(u => u.id === userId);
-        return user ? user.username : userId;
+        // 确保比较时使用字符串类型，避免类型不匹配
+        const user = users.find(u => String(u.id) === String(userId));
+        return user ? user.username : String(userId);
       }
     },
     {
@@ -202,9 +216,9 @@ const Orders = () => {
       key: 'action',
       render: (_, record) => (
         <>
-          <Button type="link" onClick={() => handleViewDetail(record.id)}>详情</Button>
+          <Button type="link" onClick={() => handleViewDetail(String(record.id))}>详情</Button>
           {record.status === 1 && (
-            <Button type="link" onClick={() => handlePayOrder(record.id)}>支付</Button>
+            <Button type="link" onClick={() => handlePayOrder(String(record.id))}>支付</Button>
           )}
         </>
       ),
@@ -217,7 +231,7 @@ const Orders = () => {
       <Button type="primary" onClick={showCreateModal} style={{ marginBottom: 16 }}>
         创建订单
       </Button>
-      <Table columns={columns} dataSource={orders} rowKey="id" loading={loading} />
+      <Table columns={columns} dataSource={orders} rowKey={(record) => String(record.id)} loading={loading} />
       
       {/* 创建订单对话框 */}
       <Modal
@@ -238,7 +252,7 @@ const Orders = () => {
           >
             <Select placeholder="请选择用户">
               {users.map(user => (
-                <Option key={user.id} value={user.id}>{user.username} (¥{user.balance})</Option>
+                <Option key={String(user.id)} value={String(user.id)}>{user.username} (¥{user.balance})</Option>
               ))}
             </Select>
           </Form.Item>
@@ -250,7 +264,7 @@ const Orders = () => {
           >
             <Select placeholder="请选择产品">
               {products.map(product => (
-                <Option key={product.id} value={product.id}>
+                <Option key={String(product.id)} value={String(product.id)}>
                   {product.name} - ¥{product.price.toFixed(2)} (库存: {product.stock})
                 </Option>
               ))}
@@ -260,7 +274,18 @@ const Orders = () => {
           <Form.Item
             label="数量"
             name="quantity"
-            rules={[{ required: true, message: '请输入数量' }, { type: 'number', min: 1 }]}
+            rules={[
+              { required: true, message: '请输入数量' },
+              {
+                validator: (_, value) => {
+                  const numValue = Number(value);
+                  if (isNaN(numValue) || numValue < 1 || !Number.isInteger(numValue)) {
+                    return Promise.reject('请输入有效的数量（大于等于1的整数）');
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <Input type="number" placeholder="请输入购买数量" />
           </Form.Item>
@@ -279,8 +304,8 @@ const Orders = () => {
           <div>
             <div style={{ marginBottom: 20 }}>
               <h3>订单基本信息</h3>
-              <p>订单ID: {selectedOrder.id}</p>
-              <p>用户ID: {selectedOrder.userId}</p>
+              <p>订单ID: {String(selectedOrder.id)}</p>
+              <p>用户ID: {String(selectedOrder.userId)}</p>
               <p>订单金额: ¥{(selectedOrder.totalAmount || 0).toFixed(2)}</p>
               <p>订单状态: 
                 <span style={{ color: getOrderStatusColor(selectedOrder.status), marginLeft: 5 }}>
@@ -298,14 +323,14 @@ const Orders = () => {
                 <h3>订单商品</h3>
                 <Table
                   columns={[
-                    { title: '商品ID', dataIndex: 'productId', key: 'productId' },
+                    { title: '商品ID', dataIndex: 'productId', key: 'productId', render: id => String(id) },
                     { title: '商品名称', dataIndex: 'productName', key: 'productName' },
-                    { title: '单价', dataIndex: 'price', key: 'price', render: price => `¥${price.toFixed(2)}` },
+                    { title: '单价', dataIndex: 'unitPrice', key: 'unitPrice', render: price => `¥${price ? price.toFixed(2) : '0.00'}` },
                     { title: '数量', dataIndex: 'quantity', key: 'quantity' },
-                    { title: '小计', dataIndex: 'subtotal', key: 'subtotal', render: subtotal => `¥${subtotal.toFixed(2)}` }
+                    { title: '小计', dataIndex: 'totalPrice', key: 'totalPrice', render: subtotal => `¥${subtotal ? subtotal.toFixed(2) : '0.00'}` }
                   ]}
                   dataSource={selectedOrder.orderItems}
-                  rowKey="id"
+                  rowKey={(record) => String(record.id)}
                   pagination={false}
                 />
               </div>

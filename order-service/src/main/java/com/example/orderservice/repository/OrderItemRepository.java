@@ -10,5 +10,5 @@ import java.util.List;
  */
 @Mapper
 public interface OrderItemRepository extends BaseMapper<OrderItem> {
-    List<OrderItem> selectByOrderId(Long orderId);
+    List<OrderItem> selectByOrderId(String orderId);
 }

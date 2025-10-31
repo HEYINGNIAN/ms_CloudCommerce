@@ -8,11 +8,35 @@ import './App.css';
 
 const { Header, Content, Footer } = Layout;
 const { Title } = Typography;
-const { SubMenu } = Menu;
+
+
 
 function App() {
+  // 使用items属性代替children属性
+  const menuItems = [
+    {
+      key: '1',
+      label: <Link to="/">首页</Link>,
+    },
+    {
+      key: '2',
+      label: <Link to="/users">用户管理</Link>,
+    },
+    {
+      key: '3',
+      label: <Link to="/products">产品管理</Link>,
+    },
+    {
+      key: '4',
+      label: <Link to="/orders">订单管理</Link>,
+    },
+  ];
+
   return (
-    <Router>
+    <Router future={{
+      v7_startTransition: true,
+      v7_relativeSplatPath: true
+    }}>
       <Layout className="layout">
         <Header className="header">
           <div className="logo">
@@ -23,20 +47,8 @@ function App() {
             mode="horizontal"
             defaultSelectedKeys={['1']}
             style={{ lineHeight: '64px' }}
-          >
-            <Menu.Item key="1">
-              <Link to="/">首页</Link>
-            </Menu.Item>
-            <Menu.Item key="2">
-              <Link to="/users">用户管理</Link>
-            </Menu.Item>
-            <Menu.Item key="3">
-              <Link to="/products">产品管理</Link>
-            </Menu.Item>
-            <Menu.Item key="4">
-              <Link to="/orders">订单管理</Link>
-            </Menu.Item>
-          </Menu>
+            items={menuItems}
+          />
         </Header>
         <Content style={{ padding: '0 50px' }}>
           <div className="site-layout-content">
@@ -48,7 +60,7 @@ function App() {
             </Routes>
           </div>
         </Content>
-        <Footer style={{ textAlign: 'center' }}>分布式系统演示 ©2024 Created by Java Team</Footer>
+        <Footer style={{ textAlign: 'center' }}>分布式系统演示 ©2025 Created by Java Team</Footer>
       </Layout>
     </Router>
   );

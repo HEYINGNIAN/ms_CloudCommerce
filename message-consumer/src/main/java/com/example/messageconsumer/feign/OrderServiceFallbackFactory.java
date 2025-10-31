@@ -17,7 +17,7 @@ public class OrderServiceFallbackFactory implements FallbackFactory<OrderService
         log.error("订单服务调用失败: {}", cause.getMessage(), cause);
         return new OrderServiceClient() {
             @Override
-            public Result<Boolean> updateOrderStatus(Long orderId, Integer status) {
+            public Result<Boolean> updateOrderStatus(String orderId, Integer status) {
                 log.warn("更新订单状态熔断: orderId={}, status={}", orderId, status);
                 return Result.fail("订单服务暂时不可用，无法更新订单状态");
             }

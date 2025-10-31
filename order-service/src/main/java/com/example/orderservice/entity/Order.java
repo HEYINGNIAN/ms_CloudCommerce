@@ -16,8 +16,8 @@ import java.math.BigDecimal;
 public class Order extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
-    private Long userId;
-    private Long productId;
+    private String userId;
+    private String productId;
     private Integer quantity;
     private BigDecimal totalAmount;
     private Integer status; // 订单状态：0-待支付，1-已支付，2-已发货，3-已完成，4-已取消

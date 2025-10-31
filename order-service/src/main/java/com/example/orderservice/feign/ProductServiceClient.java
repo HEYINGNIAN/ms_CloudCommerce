@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 @FeignClient(name = "product-service")
 public interface ProductServiceClient {
 
-    @GetMapping("/api/products/{id}")
-    Result<ProductDTO> getProductById(@PathVariable("id") Long id);
+    @GetMapping("/products/{id}")
+    Result<ProductDTO> getProductById(@PathVariable("id") String id);
 
-    @PostMapping("/api/products/deduct-stock")
-    Result<Boolean> deductStock(@RequestParam("productId") Long productId, @RequestParam("quantity") Integer quantity);
+    @PostMapping("/products/deduct-stock")
+    Result<Boolean> deductStock(@RequestParam("productId") String productId, @RequestParam("quantity") Integer quantity);
 }

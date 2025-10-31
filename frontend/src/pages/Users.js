@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Typography, message } from 'antd';
-import axios from 'axios';
+import api from '../utils/axiosConfig';
 
 const { Title } = Typography;
 const { Option } = Select;
-const { TextArea } = Input;
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -17,8 +16,10 @@ const Users = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/users');
+      // 使用全局axios配置，自动处理ID转换为字符串
+      const response = await api.get('/users');
       if (response.data.code === 200) {
+        // 由于我们的axios配置已经在响应拦截器中处理了ID转换，这里可以直接使用
         setUsers(response.data.data);
       } else {
         message.error(response.data.message || '获取用户列表失败');
@@ -66,11 +67,11 @@ const Users = () => {
     try {
       let response;
       if (editingUser) {
-        // 更新用户
-        response = await axios.put(`/api/users/${editingUser.id}`, values);
+        // 更新用户 - axios配置会自动处理ID转换
+        response = await api.put(`/users/${editingUser.id}`, values);
       } else {
         // 新增用户
-        response = await axios.post('/api/users', values);
+        response = await api.post('/users', values);
       }
       
       if (response.data.code === 200) {
@@ -95,7 +96,8 @@ const Users = () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          const response = await axios.delete(`/api/users/${id}`);
+          // 确保传递的是字符串类型的ID
+          const response = await api.delete(`/users/${String(id)}`);
           if (response.data.code === 200) {
             message.success('删除用户成功');
             fetchUsers();
@@ -115,6 +117,11 @@ const Users = () => {
       title: '用户ID',
       dataIndex: 'id',
       key: 'id',
+      // 确保ID作为字符串显示，避免JavaScript精度问题
+      render: id => {
+        // 确保即使id已经是字符串，也明确处理
+        return String(id);
+      },
     },
     {
       title: '用户名',
@@ -154,7 +161,7 @@ const Users = () => {
       render: (_, record) => (
         <>
           <Button type="link" onClick={() => showModal(record)}>编辑</Button>
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button type="link" danger onClick={() => handleDelete(String(record.id))}>删除</Button>
         </>
       ),
     },

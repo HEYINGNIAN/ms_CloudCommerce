@@ -11,6 +11,7 @@ import org.redisson.api.RLock;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.seata.spring.annotation.GlobalTransactional;
 
 import jakarta.annotation.Resource;
 import java.util.List;
@@ -32,7 +33,7 @@ public class UserService {
     /**
      * 根据ID获取用户
      */
-    public Result<UserDTO> getUserById(Long id) {
+    public Result<UserDTO> getUserById(String id) {
         User user = userRepository.selectById(id);
         if (user == null) {
             return Result.fail(ErrorCode.NOT_FOUND.getCode(), "用户不存在");
@@ -84,7 +85,7 @@ public class UserService {
     /**
      * 删除用户
      */
-    public Result<Boolean> deleteUser(Long id) {
+    public Result<Boolean> deleteUser(String id) {
         boolean success = userRepository.deleteById(id) > 0;
         return success ? Result.success(true) : Result.fail("删除用户失败");
     }
@@ -92,8 +93,8 @@ public class UserService {
     /**
      * 扣减用户余额（使用分布式锁）
      */
-    @Transactional
-    public Result<Boolean> deductBalance(Long userId, Integer amount) {
+    @GlobalTransactional
+    public Result<Boolean> deductBalance(String userId, Integer amount) {
         // 生成锁的key
         String lockKey = "deduct_balance:" + userId;
         RLock lock = null;

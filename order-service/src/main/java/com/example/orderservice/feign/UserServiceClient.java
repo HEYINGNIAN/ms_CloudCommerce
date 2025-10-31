@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 @FeignClient(name = "user-service")
 public interface UserServiceClient {
 
-    @GetMapping("/api/users/{id}")
-    Result<UserDTO> getUserById(@PathVariable("id") Long id);
+    @GetMapping("/users/{id}")
+    Result<UserDTO> getUserById(@PathVariable("id") String id);
 
-    @PostMapping("/api/users/deduct-balance")
-    Result<Boolean> deductBalance(@RequestParam("userId") Long userId, @RequestParam("amount") Integer amount);
+    @PostMapping("/users/deduct-balance")
+    Result<Boolean> deductBalance(@RequestParam("userId") String userId, @RequestParam("amount") Integer amount);
 }

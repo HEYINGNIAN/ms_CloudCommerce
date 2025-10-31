@@ -15,6 +15,7 @@ import org.redisson.api.RBucket;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.seata.spring.annotation.GlobalTransactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -46,7 +47,7 @@ public class ProductService {
     /**
      * 根据ID获取产品
      */
-    public Result<ProductDTO> getProductById(Long id) {
+    public Result<ProductDTO> getProductById(String id) {
         // 先从缓存获取
         String cacheKey = PRODUCT_CACHE_PREFIX + id;
         ProductDTO cachedProduct = (ProductDTO) redisTemplate.opsForValue().get(cacheKey);
@@ -115,7 +116,7 @@ public class ProductService {
     /**
      * 删除产品
      */
-    public Result<Boolean> deleteProduct(Long id) {
+    public Result<Boolean> deleteProduct(String id) {
         boolean success = productRepository.deleteById(id) > 0;
         if (success) {
             // 清除缓存
@@ -128,8 +129,8 @@ public class ProductService {
     /**
      * 扣减库存（使用分布式锁和Redis缓存优化）
      */
-    @Transactional
-    public Result<Boolean> deductStock(Long productId, Integer quantity) {
+    @GlobalTransactional
+    public Result<Boolean> deductStock(String productId, Integer quantity) {
         // 生成锁的key
         String lockKey = "deduct_stock:" + productId;
         RLock lock = null;
@@ -182,7 +183,7 @@ public class ProductService {
      * 增加库存
      */
     @Transactional
-    public Result<Boolean> addStock(Long productId, Integer quantity) {
+    public Result<Boolean> addStock(String productId, Integer quantity) {
         Product product = productRepository.selectById(productId);
         if (product == null) {
             return Result.fail(ErrorCode.NOT_FOUND.getCode(), "产品不存在");

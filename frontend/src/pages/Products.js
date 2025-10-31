@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Typography, message } from 'antd';
-import axios from 'axios';
+import api from '../utils/axiosConfig';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -11,14 +11,21 @@ const Products = () => {
   const [visible, setVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form] = Form.useForm();
+  const [adjustForm] = Form.useForm(); // 为库存调整创建表单实例
 
   // 获取产品列表
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/products');
+      // 使用全局axios配置，自动处理大整数ID为字符串
+      const response = await api.get('/products');
       if (response.data.code === 200) {
-        setProducts(response.data.data);
+        // 额外确保所有产品ID都是字符串，提供双重保障
+        const processedProducts = response.data.data.map(product => ({
+          ...product,
+          id: String(product.id)
+        }));
+        setProducts(processedProducts);
       } else {
         message.error(response.data.message || '获取产品列表失败');
       }
@@ -37,7 +44,9 @@ const Products = () => {
   // 打开新增/编辑对话框
   const showModal = (product = null) => {
     if (product) {
-      setEditingProduct(product);
+      // 创建副本并确保ID为字符串
+      const productCopy = { ...product, id: String(product.id) };
+      setEditingProduct(productCopy);
       form.setFieldsValue({
         name: product.name,
         description: product.description,
@@ -61,13 +70,20 @@ const Products = () => {
   // 保存产品
   const handleSave = async (values) => {
     try {
+      // 转换价格和库存为正确的数字类型
+      const productData = {
+        ...values,
+        price: Number(values.price),
+        stock: Number(values.stock)
+      };
+      
       let response;
       if (editingProduct) {
-        // 更新产品
-        response = await axios.put(`/api/products/${editingProduct.id}`, values);
+        // 更新产品 - 确保ID作为字符串传递
+        response = await api.put(`/products/${String(editingProduct.id)}`, productData);
       } else {
         // 新增产品
-        response = await axios.post('/api/products', values);
+        response = await api.post('/products', productData);
       }
       
       if (response.data.code === 200) {
@@ -92,7 +108,8 @@ const Products = () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          const response = await axios.delete(`/api/products/${id}`);
+            // 确保传递的是字符串类型的ID
+            const response = await api.delete(`/products/${String(id)}`);
           if (response.data.code === 200) {
             message.success('删除产品成功');
             fetchProducts();
@@ -107,21 +124,37 @@ const Products = () => {
     });
   };
 
-  // 调整库存
+  // 调整库存 - 使用React状态管理代替DOM操作
   const handleAdjustStock = async (product) => {
+    // 重置调整表单
+    adjustForm.resetFields();
+    
     Modal.confirm({
       title: '调整库存',
       content: (
-        <Form layout="vertical">
+        <Form form={adjustForm} layout="vertical">
           <Form.Item label="当前库存">
             <Input value={product.stock} disabled />
           </Form.Item>
-          <Form.Item label="调整数量">
+          <Form.Item 
+            label="调整数量" 
+            name="adjustAmount"
+            rules={[
+              {
+                validator: (_, value) => {
+                  const numValue = Number(value);
+                  if (isNaN(numValue) || numValue === 0) {
+                    return Promise.reject('请输入非零的调整数量');
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          >
             <Input 
-              id="adjustAmount" 
               type="number" 
               placeholder="正数增加，负数减少" 
-              focus={true}
+              autoFocus
             />
           </Form.Item>
         </Form>
@@ -129,15 +162,14 @@ const Products = () => {
       okText: '确认',
       cancelText: '取消',
       onOk: async () => {
-        const adjustAmount = parseInt(document.getElementById('adjustAmount').value) || 0;
-        if (adjustAmount === 0) {
-          message.warning('请输入调整数量');
-          return;
-        }
-        
         try {
-          const response = await axios.put(
-            `/api/products/${product.id}/stock`,
+          // 获取并验证表单值
+          const values = await adjustForm.validateFields();
+          const adjustAmount = Number(values.adjustAmount);
+          
+          // 确保传递的是字符串类型的ID
+          const response = await api.put(
+            `/products/${String(product.id)}/stock`,
             null,
             { params: { amount: adjustAmount } }
           );
@@ -148,8 +180,11 @@ const Products = () => {
             message.error(response.data.message || '库存调整失败');
           }
         } catch (error) {
-          console.error('调整库存失败:', error);
-          message.error('调整库存失败，请稍后重试');
+          // 表单验证失败时不显示错误消息
+          if (error.message !== 'Validate Failed') {
+            console.error('调整库存失败:', error);
+            message.error('调整库存失败，请稍后重试');
+          }
         }
       }
     });
@@ -160,6 +195,8 @@ const Products = () => {
       title: '产品ID',
       dataIndex: 'id',
       key: 'id',
+      // 确保ID作为字符串显示，避免JavaScript精度问题
+      render: id => String(id),
     },
     {
       title: '产品名称',
@@ -189,7 +226,7 @@ const Products = () => {
         <>
           <Button type="link" onClick={() => showModal(record)}>编辑</Button>
           <Button type="link" onClick={() => handleAdjustStock(record)}>调整库存</Button>
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button type="link" danger onClick={() => handleDelete(String(record.id))}>删除</Button>
         </>
       ),
     },
@@ -201,7 +238,7 @@ const Products = () => {
       <Button type="primary" onClick={() => showModal()} style={{ marginBottom: 16 }}>
         新增产品
       </Button>
-      <Table columns={columns} dataSource={products} rowKey="id" loading={loading} />
+      <Table columns={columns} dataSource={products} rowKey={(record) => String(record.id)} loading={loading} />
       
       <Modal
         title={editingProduct ? '编辑产品' : '新增产品'}
@@ -232,7 +269,18 @@ const Products = () => {
           <Form.Item
             label="价格"
             name="price"
-            rules={[{ required: true, message: '请输入价格' }, { type: 'number', min: 0 }]}
+            rules={[
+              { required: true, message: '请输入价格' },
+              {
+                validator: (_, value) => {
+                  const numValue = Number(value);
+                  if (isNaN(numValue) || numValue < 0) {
+                    return Promise.reject('请输入有效的价格（大于等于0的数字）');
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <Input type="number" placeholder="请输入价格" />
           </Form.Item>
@@ -240,7 +288,18 @@ const Products = () => {
           <Form.Item
             label="库存"
             name="stock"
-            rules={[{ required: true, message: '请输入库存' }, { type: 'number', min: 0 }]}
+            rules={[
+              { required: true, message: '请输入库存' },
+              {
+                validator: (_, value) => {
+                  const numValue = Number(value);
+                  if (isNaN(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
+                    return Promise.reject('请输入有效的库存（大于等于0的整数）');
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
           >
             <Input type="number" placeholder="请输入库存" />
           </Form.Item>

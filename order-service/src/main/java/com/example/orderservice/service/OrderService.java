@@ -23,9 +23,11 @@ import org.redisson.api.RLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.seata.spring.annotation.GlobalTransactional;
 
 import jakarta.annotation.Resource;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -76,8 +78,8 @@ public class OrderService {
     /**
      * 创建订单（分布式事务处理）
      */
-    @Transactional
-    public Result<OrderDTO> createOrder(Long userId, Long productId, Integer quantity) {
+    @GlobalTransactional
+    public Result<OrderDTO> createOrder(String userId, String productId, Integer quantity) {
         // 生成订单号
         String orderNo = generateOrderNo();
         String lockKey = "create_order:" + userId + ":" + productId;
@@ -188,9 +190,41 @@ public class OrderService {
     }
 
     /**
+     * 获取所有订单列表
+     */
+    public Result<List<OrderDTO>> getAllOrders() {
+        try {
+            // 查询所有订单
+            List<Order> orders = orderRepository.selectList(null);
+            
+            // 转换为DTO
+            List<OrderDTO> orderDTOs = orders.stream().map(order -> {
+                OrderDTO dto = new OrderDTO();
+                BeanUtils.copyProperties(order, dto);
+                
+                // 查询每个订单的订单项
+                List<OrderItem> items = orderItemRepository.selectByOrderId(order.getId());
+                List<OrderItemDTO> itemDTOs = items.stream().map(item -> {
+                    OrderItemDTO itemDTO = new OrderItemDTO();
+                    BeanUtils.copyProperties(item, itemDTO);
+                    return itemDTO;
+                }).collect(Collectors.toList());
+                
+                dto.setOrderItems(itemDTOs);
+                return dto;
+            }).collect(Collectors.toList());
+            
+            return Result.success(orderDTOs);
+        } catch (Exception e) {
+            log.error("获取所有订单失败", e);
+            return Result.fail("获取订单列表失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 获取订单详情
      */
-    public Result<OrderDTO> getOrderById(Long id) {
+    public Result<OrderDTO> getOrderById(String id) {
         // 先尝试从缓存获取 - 暂时注释掉Redis操作
         // String cacheKey = "order:info:" + id;
         // OrderDTO cachedOrder = (OrderDTO) redisTemplate.opsForValue().get(cacheKey);
@@ -223,7 +257,7 @@ public class OrderService {
     /**
      * 获取用户订单列表
      */
-    public Result<List<OrderDTO>> getUserOrders(Long userId) {
+    public Result<List<OrderDTO>> getUserOrders(String userId) {
         List<Order> orders = orderRepository.selectByUserId(userId);
         List<OrderDTO> orderDTOs = orders.stream().map(order -> {
             OrderDTO dto = new OrderDTO();
@@ -238,7 +272,7 @@ public class OrderService {
      * 更新订单状态
      */
     @Transactional
-    public Result<Boolean> updateOrderStatus(Long id, Integer status) {
+    public Result<Boolean> updateOrderStatus(String id, Integer status) {
         Order order = orderRepository.selectById(id);
         if (order == null) {
             return Result.fail(ErrorCode.NOT_FOUND.getCode(), "订单不存在");
@@ -268,12 +302,12 @@ public class OrderService {
     /**
      * 发送订单创建成功消息
      */
-    private void sendOrderCreatedMessage(Long orderId, Long userId) {
+    private void sendOrderCreatedMessage(String orderId, String userId) {
         try {
             // 创建消息对象，包含orderId和userId
             Map<String, Object> orderData = new HashMap<>();
-            orderData.put("orderId", orderId);
-            orderData.put("userId", userId);
+            orderData.put("orderId", String.valueOf(orderId));
+            orderData.put("userId", String.valueOf(userId));
             
             // 转换为JSON字符串
             ObjectMapper objectMapper = new ObjectMapper();
@@ -289,11 +323,11 @@ public class OrderService {
     /**
      * 发送订单失败消息
      */
-    private void sendOrderFailedMessage(Long userId, Long productId, Integer quantity, String orderNo, String errorMsg) {
+    private void sendOrderFailedMessage(String userId, String productId, Integer quantity, String orderNo, String errorMsg) {
         try {
             OrderFailedMessage message = new OrderFailedMessage();
-            message.setUserId(userId);
-            message.setProductId(productId);
+            message.setUserId(String.valueOf(userId));
+            message.setProductId(String.valueOf(productId));
             message.setQuantity(quantity);
             message.setOrderNo(orderNo);
             message.setErrorMsg(errorMsg);
@@ -309,19 +343,20 @@ public class OrderService {
     /**
      * 订单失败消息内部类
      */
-    private static class OrderFailedMessage {
-        private Long userId;
-        private Long productId;
+    private static class OrderFailedMessage implements Serializable {
+        private static final long serialVersionUID = 1L;
+        private String userId;
+        private String productId;
         private Integer quantity;
         private String orderNo;
         private String errorMsg;
         private LocalDateTime createTime;
 
         // getters and setters
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-        public Long getProductId() { return productId; }
-        public void setProductId(Long productId) { this.productId = productId; }
+        public String getUserId() { return userId; }
+        public void setUserId(String userId) { this.userId = userId; }
+        public String getProductId() { return productId; }
+        public void setProductId(String productId) { this.productId = productId; }
         public Integer getQuantity() { return quantity; }
         public void setQuantity(Integer quantity) { this.quantity = quantity; }
         public String getOrderNo() { return orderNo; }

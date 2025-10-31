@@ -15,5 +15,5 @@ public interface OrderServiceClient {
      * 更新订单状态
      */
     @PutMapping("/api/orders/status")
-    Result<Boolean> updateOrderStatus(@RequestParam Long orderId, @RequestParam Integer status);
+    Result<Boolean> updateOrderStatus(@RequestParam String orderId, @RequestParam Integer status);
 }

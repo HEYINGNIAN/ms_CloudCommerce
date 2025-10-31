@@ -23,7 +23,7 @@ spring:
     username: root
     password: 990324
   rabbitmq:
-    host: localhost
+    host: 59.110.14.170
     port: 5672
     username: admin
     password: admin123
@@ -65,3 +65,24 @@ feign:
         loggerLevel: BASIC
   httpclient:
     enabled: true
+
+# Seata配置
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: my_test_tx_group
+  service:
+    vgroup-mapping:
+      my_test_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+    enable-degrade: false
+    disable-global-transaction: false
+  config:
+    type: file
+    file:
+      name: file.conf
+  registry:
+    type: file
+    file:
+      name: file.conf

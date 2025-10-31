@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
  */
 @Data
 public class OrderFailedMessage {
-    private Long userId;
-    private Long productId;
+    private String userId;
+    private String productId;
     private Integer quantity;
     private String orderNo;
     private String errorMsg;

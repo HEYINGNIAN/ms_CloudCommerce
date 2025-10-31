@@ -16,7 +16,7 @@ import java.util.List;
  * 用户控制器
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @Slf4j
 public class UserController {
 
@@ -39,7 +39,7 @@ public class UserController {
     @GetMapping("/{id}")
     @CircuitBreaker(name = "userService", fallbackMethod = "getUserByIdFallback")
     @RateLimiter(name = "userService", fallbackMethod = "rateLimiterFallback")
-    public Result<UserDTO> getUserById(@PathVariable Long id) {
+    public Result<UserDTO> getUserById(@PathVariable String id) {
         log.info("获取用户: {}", id);
         return userService.getUserById(id);
     }
@@ -69,7 +69,7 @@ public class UserController {
      */
     @DeleteMapping("/{id}")
     @CircuitBreaker(name = "userService", fallbackMethod = "deleteUserFallback")
-    public Result<Boolean> deleteUser(@PathVariable Long id) {
+    public Result<Boolean> deleteUser(@PathVariable String id) {
         log.info("删除用户: {}", id);
         return userService.deleteUser(id);
     }
@@ -79,7 +79,7 @@ public class UserController {
      */
     @PostMapping("/deduct-balance")
     @CircuitBreaker(name = "userService", fallbackMethod = "deductBalanceFallback")
-    public Result<Boolean> deductBalance(@RequestParam Long userId, @RequestParam Integer amount) {
+    public Result<Boolean> deductBalance(@RequestParam String userId, @RequestParam Integer amount) {
         log.info("扣减用户余额: userId={}, amount={}", userId, amount);
         return userService.deductBalance(userId, amount);
     }
@@ -90,7 +90,7 @@ public class UserController {
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<UserDTO> getUserByIdFallback(Long id, Throwable t) {
+    public Result<UserDTO> getUserByIdFallback(String id, Throwable t) {
         log.error("获取用户熔断: {}", id, t);
         return Result.fail("服务暂时不可用");
     }
@@ -105,12 +105,12 @@ public class UserController {
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<Boolean> deleteUserFallback(Long id, Throwable t) {
+    public Result<Boolean> deleteUserFallback(String id, Throwable t) {
         log.error("删除用户熔断: {}", id, t);
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<Boolean> deductBalanceFallback(Long userId, Integer amount, Throwable t) {
+    public Result<Boolean> deductBalanceFallback(String userId, Integer amount, Throwable t) {
         log.error("扣减余额熔断: userId={}, amount={}", userId, amount, t);
         return Result.fail("服务暂时不可用");
     }

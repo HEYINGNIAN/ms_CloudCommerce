@@ -10,9 +10,9 @@ import java.util.List;
  */
 @Data
 public class OrderDTO {
-    private Long id;
-    private Long userId;
-    private Long productId;
+    private String id;
+    private String userId;
+    private String productId;
     private Integer quantity;
     private BigDecimal totalAmount;
     private Integer status;

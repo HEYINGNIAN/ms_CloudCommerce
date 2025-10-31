@@ -18,7 +18,7 @@ spring:
         group: DEFAULT_GROUP
         file-extension: yml
   rabbitmq:
-    host: localhost
+    host: 59.110.14.170
     port: 5672
     username: admin
     password: admin123

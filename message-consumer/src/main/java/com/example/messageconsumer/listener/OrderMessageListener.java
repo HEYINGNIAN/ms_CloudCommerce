@@ -47,8 +47,8 @@ public class OrderMessageListener {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> orderData = objectMapper.readValue(msg, Map.class);
-            Long orderId = ((Number) orderData.get("orderId")).longValue();
-            Long userId = ((Number) orderData.get("userId")).longValue();
+            String orderId = String.valueOf(orderData.get("orderId"));
+            String userId = String.valueOf(orderData.get("userId"));
             log.info("收到订单创建消息: orderId={}, userId={}", orderId, userId);
 
             // 1. 记录订单创建日志（实际项目中可以写入数据库或日志系统）
@@ -77,7 +77,7 @@ public class OrderMessageListener {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> orderData = objectMapper.readValue(msg, Map.class);
-            Long orderId = ((Number) orderData.get("orderId")).longValue();
+            String orderId = String.valueOf(orderData.get("orderId"));
             String transactionId = (String) orderData.get("transactionId");
             log.info("收到订单支付消息: orderId={}, transactionId={}", orderId, transactionId);
 
@@ -113,7 +113,7 @@ public class OrderMessageListener {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> orderData = objectMapper.readValue(msg, Map.class);
-            Long orderId = ((Number) orderData.get("orderId")).longValue();
+            String orderId = String.valueOf(orderData.get("orderId"));
             log.info("收到订单超时消息: orderId={}", orderId);
 
             // 1. 更新订单状态为已取消
@@ -121,7 +121,7 @@ public class OrderMessageListener {
             if (result.getCode() == 200) {
                 // 2. 发送库存回滚消息
                 Map<String, Object> stockRollbackData = Map.of(
-                        "orderId", orderId,
+                        "orderId", String.valueOf(orderId),
                         "action", "rollback"
                 );
                 rabbitTemplate.convertAndSend("stock.exchange", "stock.rollback", objectMapper.writeValueAsString(stockRollbackData));
@@ -151,7 +151,7 @@ public class OrderMessageListener {
         try {
             String msg = new String(message.getBody());
             Map<String, Object> stockData = objectMapper.readValue(msg, Map.class);
-            Long orderId = ((Number) stockData.get("orderId")).longValue();
+            String orderId = String.valueOf(stockData.get("orderId"));
             String errorMsg = (String) stockData.get("errorMsg");
             log.warn("收到库存扣减失败消息: orderId={}, errorMsg={}", orderId, errorMsg);
 

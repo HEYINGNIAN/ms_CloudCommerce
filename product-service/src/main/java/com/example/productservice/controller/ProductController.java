@@ -16,7 +16,7 @@ import java.util.List;
  * 产品控制器
  */
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/products")
 @Slf4j
 public class ProductController {
 
@@ -39,7 +39,7 @@ public class ProductController {
     @GetMapping("/{id}")
     @CircuitBreaker(name = "productService", fallbackMethod = "getProductByIdFallback")
     @RateLimiter(name = "productService", fallbackMethod = "rateLimiterFallback")
-    public Result<ProductDTO> getProductById(@PathVariable Long id) {
+    public Result<ProductDTO> getProductById(@PathVariable String id) {
         log.info("获取产品: {}", id);
         return productService.getProductById(id);
     }
@@ -69,7 +69,7 @@ public class ProductController {
      */
     @DeleteMapping("/{id}")
     @CircuitBreaker(name = "productService", fallbackMethod = "deleteProductFallback")
-    public Result<Boolean> deleteProduct(@PathVariable Long id) {
+    public Result<Boolean> deleteProduct(@PathVariable String id) {
         log.info("删除产品: {}", id);
         return productService.deleteProduct(id);
     }
@@ -79,7 +79,7 @@ public class ProductController {
      */
     @PostMapping("/deduct-stock")
     @CircuitBreaker(name = "productService", fallbackMethod = "deductStockFallback")
-    public Result<Boolean> deductStock(@RequestParam Long productId, @RequestParam Integer quantity) {
+    public Result<Boolean> deductStock(@RequestParam String productId, @RequestParam Integer quantity) {
         log.info("扣减产品库存: productId={}, quantity={}", productId, quantity);
         return productService.deductStock(productId, quantity);
     }
@@ -89,7 +89,7 @@ public class ProductController {
      */
     @PostMapping("/add-stock")
     @CircuitBreaker(name = "productService", fallbackMethod = "addStockFallback")
-    public Result<Boolean> addStock(@RequestParam Long productId, @RequestParam Integer quantity) {
+    public Result<Boolean> addStock(@RequestParam String productId, @RequestParam Integer quantity) {
         log.info("增加产品库存: productId={}, quantity={}", productId, quantity);
         return productService.addStock(productId, quantity);
     }
@@ -100,7 +100,7 @@ public class ProductController {
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<ProductDTO> getProductByIdFallback(Long id, Throwable t) {
+    public Result<ProductDTO> getProductByIdFallback(String id, Throwable t) {
         log.error("获取产品熔断: {}", id, t);
         return Result.fail("服务暂时不可用");
     }
@@ -115,17 +115,17 @@ public class ProductController {
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<Boolean> deleteProductFallback(Long id, Throwable t) {
+    public Result<Boolean> deleteProductFallback(String id, Throwable t) {
         log.error("删除产品熔断: {}", id, t);
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<Boolean> deductStockFallback(Long productId, Integer quantity, Throwable t) {
+    public Result<Boolean> deductStockFallback(String productId, Integer quantity, Throwable t) {
         log.error("扣减库存熔断: productId={}, quantity={}", productId, quantity, t);
         return Result.fail("服务暂时不可用");
     }
 
-    public Result<Boolean> addStockFallback(Long productId, Integer quantity, Throwable t) {
+    public Result<Boolean> addStockFallback(String productId, Integer quantity, Throwable t) {
         log.error("增加库存熔断: productId={}, quantity={}", productId, quantity, t);
         return Result.fail("服务暂时不可用");
     }
